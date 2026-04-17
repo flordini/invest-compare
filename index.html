@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Investment Comparator</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #f9f9f9; color: #1a1a1a; }
@@ -19,24 +19,20 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useMemo, useRef } = React;
+    const { useState, useMemo, useRef, useEffect } = React;
     const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
 
     const DEFAULT_COLORS = ["#2563eb","#dc2626","#16a34a","#d97706","#7c3aed","#0891b2"];
-    const PRESET_COLORS = [
+    const PRESET_COLORS  = [
       "#2563eb","#dc2626","#16a34a","#d97706","#7c3aed","#0891b2",
       "#db2777","#ea580c","#65a30d","#0d9488","#4f46e5","#b45309",
     ];
 
     const mToY = m => (Math.pow(1 + m / 100, 12) - 1) * 100;
     const yToM = y => (Math.pow(1 + y / 100, 1 / 12) - 1) * 100;
-    const fmtCurrency = v =>
-      new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    const fmtCurrency = v => new Intl.NumberFormat("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 }).format(v);
     const fmtK = v => v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `${(v/1e3).toFixed(0)}k` : v;
-    const todayStr = () => {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-    };
+    const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
 
     let uid = 3;
 
@@ -47,26 +43,29 @@
       const [open, setOpen] = useState(false);
       const ref = useRef();
 
-      React.useEffect(() => {
+      useEffect(() => {
         const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
       }, []);
 
+      const rect = () => ref.current?.getBoundingClientRect();
+
       return (
         <div style={{ position:"relative" }} ref={ref}>
-          <button onClick={() => setOpen(o => !o)} style={{
-            width:28, height:28, borderRadius:6, border:"2px solid #e0e0e0",
-            background:value, cursor:"pointer", display:"block", padding:0, flexShrink:0
-          }} title="Pick color" />
+          <button
+            onClick={() => setOpen(o => !o)}
+            style={{ width:28, height:28, borderRadius:6, border:"2px solid #e0e0e0", background:value, cursor:"pointer", display:"block", padding:0, flexShrink:0 }}
+            title="Pick color"
+          />
           {open && (
             <div style={{
               position:"fixed", zIndex:1000, background:"#fff", border:"1px solid #e5e5e5",
               borderRadius:10, padding:10, boxShadow:"0 6px 20px rgba(0,0,0,0.13)", width:180,
-              top: (() => { const r = ref.current?.getBoundingClientRect(); return r ? r.bottom + 6 : 0; })(),
-              left: (() => { const r = ref.current?.getBoundingClientRect(); return r ? Math.min(r.left, window.innerWidth - 200) : 0; })(),
+              top:  rect() ? rect().bottom + 6 : 0,
+              left: rect() ? Math.min(rect().left, window.innerWidth - 200) : 0,
             }}>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(6, 1fr)", gap:5, marginBottom:8 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:5, marginBottom:8 }}>
                 {PRESET_COLORS.map(c => (
                   <button key={c} onClick={() => { onChange(c); setOpen(false); }} style={{
                     width:20, height:20, borderRadius:4,
@@ -87,123 +86,85 @@
     }
 
     const INITIAL_STRATEGIES = [
-      { id:1, name:"Poupança",       expirationDate:"2035-12", monthlyYield:"0.50", yearlyYield: mToY(0.5).toFixed(2), color:DEFAULT_COLORS[0] },
-      { id:2, name:"Tesouro Direto", expirationDate:"2035-12", monthlyYield:"1.00", yearlyYield: mToY(1.0).toFixed(2), color:DEFAULT_COLORS[1] },
+      { id:1, name:"Poupança",       expirationDate:"2035-12", monthlyYield:"0.50", yearlyYield:mToY(0.5).toFixed(2), color:DEFAULT_COLORS[0] },
+      { id:2, name:"Tesouro Direto", expirationDate:"2035-12", monthlyYield:"1.00", yearlyYield:mToY(1.0).toFixed(2), color:DEFAULT_COLORS[1] },
     ];
 
     function App() {
-      const [initial,    setInitial]    = useState("10000");
-      const [monthly,    setMonthly]    = useState("500");
-      const [strategies, setStrategies] = useState(INITIAL_STRATEGIES);
-      const [importError,setImportError]= useState("");
+      const [initial,     setInitial]     = useState("10000");
+      const [monthly,     setMonthly]     = useState("500");
+      const [strategies,  setStrategies]  = useState(INITIAL_STRATEGIES);
+      const [importError, setImportError] = useState("");
       const fileRef = useRef();
 
-      const update = (id, field, val) => {
-        setStrategies(prev => prev.map(s => {
-          if (s.id !== id) return s;
-          const u = { ...s, [field]: val };
-          if (field === "monthlyYield") { const m = parseFloat(val); u.yearlyYield = isNaN(m) ? "" : mToY(m).toFixed(2); }
-          if (field === "yearlyYield")  { const y = parseFloat(val); u.monthlyYield = isNaN(y) ? "" : yToM(y).toFixed(4); }
-          return u;
-        }));
-      };
+      const update = (id, field, val) => setStrategies(prev => prev.map(s => {
+        if (s.id !== id) return s;
+        const u = { ...s, [field]: val };
+        if (field === "monthlyYield") { const m = parseFloat(val); u.yearlyYield = isNaN(m) ? "" : mToY(m).toFixed(2); }
+        if (field === "yearlyYield")  { const y = parseFloat(val); u.monthlyYield = isNaN(y) ? "" : yToM(y).toFixed(4); }
+        return u;
+      }));
 
       const addStrategy = () => {
-        const usedColors = strategies.map(s => s.color);
-        const nextColor = DEFAULT_COLORS.find(c => !usedColors.includes(c)) || DEFAULT_COLORS[strategies.length % DEFAULT_COLORS.length];
-        setStrategies(prev => [...prev, {
-          id: uid++, name: `Strategy ${prev.length + 1}`,
-          expirationDate:"2035-12", monthlyYield:"0.80",
-          yearlyYield: mToY(0.8).toFixed(2), color: nextColor,
-        }]);
+        const used = strategies.map(s => s.color);
+        const color = DEFAULT_COLORS.find(c => !used.includes(c)) || DEFAULT_COLORS[strategies.length % DEFAULT_COLORS.length];
+        setStrategies(prev => [...prev, { id:uid++, name:`Strategy ${prev.length+1}`, expirationDate:"2035-12", monthlyYield:"0.80", yearlyYield:mToY(0.8).toFixed(2), color }]);
       };
 
       const removeStrategy = id => setStrategies(prev => prev.filter(s => s.id !== id));
 
       const handleExport = () => {
-        const payload = { initial, monthly, strategies, exportedAt: new Date().toISOString() };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+        const blob = new Blob([JSON.stringify({ initial, monthly, strategies, exportedAt: new Date().toISOString() }, null, 2)], { type:"application/json" });
         const url  = URL.createObjectURL(blob);
         const a    = document.createElement("a");
-        a.href = url;
-        a.download = `investment-comparison-${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
+        a.href = url; a.download = `investment-comparison-${new Date().toISOString().slice(0,10)}.json`; a.click();
         URL.revokeObjectURL(url);
       };
 
       const handleImport = e => {
         setImportError("");
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const file = e.target.files?.[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = ev => {
           try {
             const data = JSON.parse(ev.target.result);
-            if (!data.strategies || !Array.isArray(data.strategies)) throw new Error("Invalid file");
-            setInitial(data.initial ?? "0");
-            setMonthly(data.monthly ?? "0");
-            setStrategies(data.strategies.map((s, i) => ({ ...s, id: uid++, color: s.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length] })));
+            if (!Array.isArray(data.strategies)) throw new Error();
+            setInitial(data.initial ?? "0"); setMonthly(data.monthly ?? "0");
+            setStrategies(data.strategies.map((s,i) => ({ ...s, id:uid++, color: s.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length] })));
           } catch { setImportError("Invalid file. Please import a valid comparison JSON."); }
         };
-        reader.readAsText(file);
-        e.target.value = "";
+        reader.readAsText(file); e.target.value = "";
       };
 
       const { chartData, finalValues } = useMemo(() => {
-        const init = parseFloat(initial) || 0;
-        const mon  = parseFloat(monthly) || 0;
-        const now  = new Date();
-        const startYear  = now.getFullYear();
-        const startMonth = now.getMonth();
-
-        const parseExpiry = str => {
-          if (!str) return null;
-          const [y, m] = str.split("-").map(Number);
-          return new Date(y, m - 1, 1);
-        };
-
+        const init = parseFloat(initial) || 0, mon = parseFloat(monthly) || 0;
+        const now  = new Date(), startYear = now.getFullYear(), startMonth = now.getMonth();
+        const parseExpiry = str => { if (!str) return null; const [y,m] = str.split("-").map(Number); return new Date(y, m-1, 1); };
         const expiries = strategies.map(s => parseExpiry(s.expirationDate)).filter(Boolean);
         if (!expiries.length) return { chartData:[], finalValues:{} };
-
-        const maxDate    = new Date(Math.max(...expiries));
-        const totalMonths = (maxDate.getFullYear() - startYear) * 12 + (maxDate.getMonth() - startMonth);
+        const maxDate = new Date(Math.max(...expiries));
+        const totalMonths = (maxDate.getFullYear()-startYear)*12 + (maxDate.getMonth()-startMonth);
         if (totalMonths <= 0) return { chartData:[], finalValues:{} };
-
-        const rows = [];
-        const fv   = {};
-
+        const rows = [], fv = {};
         for (let i = 0; i <= totalMonths; i++) {
-          const d   = new Date(startYear, startMonth + i, 1);
-          const label = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}`;
-          const row = { label, month: i };
-
+          const d = new Date(startYear, startMonth+i, 1);
+          const row = { label:`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}`, month:i };
           strategies.forEach(s => {
-            const exp = parseExpiry(s.expirationDate);
-            if (!exp) return;
-            const expMonths = (exp.getFullYear() - startYear) * 12 + (exp.getMonth() - startMonth);
-            if (i > expMonths) { row[s.id] = null; return; }
-            const r = parseFloat(s.monthlyYield) / 100;
-            if (isNaN(r)) { row[s.id] = 0; return; }
-            const val = r === 0
-              ? init + mon * i
-              : init * Math.pow(1+r, i) + mon * (Math.pow(1+r, i) - 1) / r;
-            row[s.id] = Math.round(val * 100) / 100;
-            if (i === expMonths || i === totalMonths) fv[s.id] = row[s.id];
+            const exp = parseExpiry(s.expirationDate); if (!exp) return;
+            const expM = (exp.getFullYear()-startYear)*12+(exp.getMonth()-startMonth);
+            if (i > expM) { row[s.id] = null; return; }
+            const r = parseFloat(s.monthlyYield)/100; if (isNaN(r)) { row[s.id]=0; return; }
+            const val = r === 0 ? init+mon*i : init*Math.pow(1+r,i)+mon*(Math.pow(1+r,i)-1)/r;
+            row[s.id] = Math.round(val*100)/100;
+            if (i===expM || i===totalMonths) fv[s.id] = row[s.id];
           });
           rows.push(row);
         }
-
-        strategies.forEach(s => {
-          if (fv[s.id] === undefined) {
-            const last = [...rows].reverse().find(r => r[s.id] != null);
-            if (last) fv[s.id] = last[s.id];
-          }
-        });
-
-        return { chartData: rows, finalValues: fv };
+        strategies.forEach(s => { if (fv[s.id]===undefined) { const last=[...rows].reverse().find(r=>r[s.id]!=null); if(last) fv[s.id]=last[s.id]; }});
+        return { chartData:rows, finalValues:fv };
       }, [initial, monthly, strategies]);
 
-      const xTicks = chartData.filter((_, i) => i % 12 === 0).map(d => d.label);
+      const xTicks = chartData.filter((_,i) => i%12===0).map(d => d.label);
 
       const CustomTooltip = ({ active, payload, label }) => {
         if (!active || !payload?.length) return null;
@@ -212,7 +173,7 @@
             <div style={{ fontWeight:600, marginBottom:6, color:"#444" }}>{label}</div>
             {payload.map(p => (
               <div key={p.dataKey} style={{ color:p.stroke, marginBottom:2 }}>
-                {strategies.find(s => s.id === p.dataKey)?.name || p.dataKey}: <b>{fmtCurrency(p.value)}</b>
+                {strategies.find(s=>s.id===p.dataKey)?.name}: <b>{fmtCurrency(p.value)}</b>
               </div>
             ))}
           </div>
@@ -220,7 +181,7 @@
       };
 
       return (
-        <div style={{ fontFamily:"'Inter', system-ui, sans-serif", maxWidth:860, margin:"0 auto", padding:"36px 24px", color:"#1a1a1a" }}>
+        <div style={{ fontFamily:"'Inter',system-ui,sans-serif", maxWidth:860, margin:"0 auto", padding:"36px 24px" }}>
 
           {/* Header */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:32 }}>
@@ -230,34 +191,21 @@
             </div>
             <div style={{ display:"flex", gap:8 }}>
               <input ref={fileRef} type="file" accept=".json" onChange={handleImport} style={{ display:"none" }} />
-              <button onClick={() => fileRef.current.click()} style={{
-                fontSize:13, padding:"7px 14px", borderRadius:7, border:"1px solid #e0e0e0",
-                background:"#fff", cursor:"pointer", fontWeight:600, color:"#555"
-              }}>↑ Import</button>
-              <button onClick={handleExport} style={{
-                fontSize:13, padding:"7px 14px", borderRadius:7, border:"1px solid #2563eb",
-                background:"#2563eb", cursor:"pointer", fontWeight:600, color:"#fff"
-              }}>↓ Export</button>
+              <button onClick={() => fileRef.current.click()} style={{ fontSize:13, padding:"7px 14px", borderRadius:7, border:"1px solid #e0e0e0", background:"#fff", cursor:"pointer", fontWeight:600, color:"#555" }}>↑ Import</button>
+              <button onClick={handleExport}                  style={{ fontSize:13, padding:"7px 14px", borderRadius:7, border:"1px solid #2563eb", background:"#2563eb", cursor:"pointer", fontWeight:600, color:"#fff" }}>↓ Export</button>
             </div>
           </div>
 
-          {importError && (
-            <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", fontSize:13, color:"#dc2626", marginBottom:20 }}>
-              {importError}
-            </div>
-          )}
+          {importError && <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", fontSize:13, color:"#dc2626", marginBottom:20 }}>{importError}</div>}
 
           {/* Global inputs */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:36 }}>
-            {[
-              { label:"Initial Amount",   val:initial, set:setInitial },
-              { label:"Monthly Addition", val:monthly, set:setMonthly },
-            ].map(({ label, val, set }) => (
+            {[{label:"Initial Amount",val:initial,set:setInitial},{label:"Monthly Addition",val:monthly,set:setMonthly}].map(({label,val,set}) => (
               <div key={label}>
                 <label style={labelSt}>{label}</label>
                 <div style={{ position:"relative" }}>
                   <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", color:"#aaa", fontSize:14 }}>R$</span>
-                  <input style={{ ...inputSt, paddingLeft:30 }} type="number" value={val} onChange={e => set(e.target.value)} min="0" />
+                  <input style={{ ...inputSt, paddingLeft:30 }} type="number" value={val} onChange={e=>set(e.target.value)} min="0" />
                 </div>
               </div>
             ))}
@@ -267,44 +215,31 @@
           <div style={{ marginBottom:36 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
               <h2 style={{ fontSize:15, fontWeight:700, margin:0 }}>Strategies</h2>
-              <button onClick={addStrategy} style={{
-                fontSize:13, padding:"6px 14px", borderRadius:7, border:"1px solid #e0e0e0",
-                background:"#fff", cursor:"pointer", fontWeight:600, color:"#444"
-              }}>+ Add</button>
+              <button onClick={addStrategy} style={{ fontSize:13, padding:"6px 14px", borderRadius:7, border:"1px solid #e0e0e0", background:"#fff", cursor:"pointer", fontWeight:600, color:"#444" }}>+ Add</button>
             </div>
-
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {strategies.map(s => (
-                <div key={s.id} style={{
-                  border:"1px solid #ebebeb", borderLeft:`3px solid ${s.color}`,
-                  borderRadius:10, padding:"14px 16px", background:"#fff", position:"relative"
-                }}>
-                  <div style={{ position:"absolute", top:14, right:14 }}>
-                    {strategies.length > 1 && (
-                      <button onClick={() => removeStrategy(s.id)} style={{
-                        fontSize:12, color:"#ccc", background:"none", border:"none", cursor:"pointer", padding:0
-                      }}>✕</button>
-                    )}
-                  </div>
+                <div key={s.id} style={{ border:"1px solid #ebebeb", borderLeft:`3px solid ${s.color}`, borderRadius:10, padding:"14px 16px", background:"#fff", position:"relative" }}>
+                  {strategies.length > 1 && (
+                    <button onClick={()=>removeStrategy(s.id)} style={{ position:"absolute", top:14, right:14, fontSize:12, color:"#ccc", background:"none", border:"none", cursor:"pointer", padding:0 }}>✕</button>
+                  )}
                   <div style={{ display:"grid", gridTemplateColumns:"28px 2fr 1.6fr 1fr 1fr", gap:12, paddingRight:32, alignItems:"end" }}>
-                    <div style={{ paddingBottom:2 }}>
-                      <ColorPicker value={s.color} onChange={v => update(s.id, "color", v)} />
-                    </div>
+                    <div style={{ paddingBottom:2 }}><ColorPicker value={s.color} onChange={v=>update(s.id,"color",v)} /></div>
                     <div>
                       <label style={labelSt}>Name</label>
-                      <input style={inputSt} value={s.name} onChange={e => update(s.id, "name", e.target.value)} />
+                      <input style={inputSt} value={s.name} onChange={e=>update(s.id,"name",e.target.value)} />
                     </div>
                     <div>
-                      <label style={labelSt}>Expiration (yyyy-mm)</label>
-                      <input style={inputSt} type="month" value={s.expirationDate} min={todayStr()} onChange={e => update(s.id, "expirationDate", e.target.value)} />
+                      <label style={labelSt}>Expiration</label>
+                      <input style={inputSt} type="month" value={s.expirationDate} min={todayStr()} onChange={e=>update(s.id,"expirationDate",e.target.value)} />
                     </div>
                     <div>
                       <label style={labelSt}>Monthly %</label>
-                      <input style={inputSt} type="number" step="0.01" min="0" value={s.monthlyYield} onChange={e => update(s.id, "monthlyYield", e.target.value)} />
+                      <input style={inputSt} type="number" step="0.01" min="0" value={s.monthlyYield} onChange={e=>update(s.id,"monthlyYield",e.target.value)} />
                     </div>
                     <div>
                       <label style={labelSt}>Yearly %</label>
-                      <input style={inputSt} type="number" step="0.01" min="0" value={s.yearlyYield} onChange={e => update(s.id, "yearlyYield", e.target.value)} />
+                      <input style={inputSt} type="number" step="0.01" min="0" value={s.yearlyYield} onChange={e=>update(s.id,"yearlyYield",e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -322,24 +257,17 @@
                   <XAxis dataKey="label" ticks={xTicks} tick={{ fontSize:11, fill:"#aaa" }} />
                   <YAxis tickFormatter={fmtK} tick={{ fontSize:11, fill:"#aaa" }} width={54} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend formatter={val => strategies.find(s => s.id === val)?.name || val} wrapperStyle={{ fontSize:13, paddingTop:12 }} />
+                  <Legend formatter={val=>strategies.find(s=>s.id===val)?.name||val} wrapperStyle={{ fontSize:13, paddingTop:12 }} />
                   {strategies.map(s => (
-                    <Line key={s.id} type="monotone" dataKey={s.id} name={s.id}
-                      stroke={s.color} strokeWidth={2} dot={false} connectNulls={false} />
+                    <Line key={s.id} type="monotone" dataKey={s.id} name={s.id} stroke={s.color} strokeWidth={2} dot={false} connectNulls={false} />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
-
-              {/* Summary */}
               <div style={{ display:"flex", gap:10, marginTop:24, flexWrap:"wrap" }}>
                 {strategies.map(s => (
-                  <div key={s.id} style={{
-                    flex:1, minWidth:160, borderRadius:8, padding:"12px 14px",
-                    border:`1px solid ${s.color}33`, borderLeft:`3px solid ${s.color}`,
-                    background:`${s.color}08`
-                  }}>
+                  <div key={s.id} style={{ flex:1, minWidth:160, borderRadius:8, padding:"12px 14px", border:`1px solid ${s.color}33`, borderLeft:`3px solid ${s.color}`, background:`${s.color}08` }}>
                     <div style={{ fontSize:11, color:"#999", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.04em", marginBottom:4 }}>{s.name}</div>
-                    <div style={{ fontSize:20, fontWeight:700, color:s.color }}>R$ {fmtCurrency(finalValues[s.id] || 0)}</div>
+                    <div style={{ fontSize:20, fontWeight:700, color:s.color }}>R$ {fmtCurrency(finalValues[s.id]||0)}</div>
                     <div style={{ fontSize:11, color:"#aaa", marginTop:2 }}>at expiration</div>
                   </div>
                 ))}
