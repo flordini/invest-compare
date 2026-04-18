@@ -26,7 +26,7 @@
     .input-prefix { position: relative; }
     .input-prefix .pfx { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 14px; pointer-events: none; }
     .input-prefix .input { padding-left: 30px; }
-    .globals { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+    .globals { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 36px; }
     .strategies-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
     .strategies { display: flex; flex-direction: column; gap: 10px; margin-bottom: 36px; }
     .strategy-card { border: 1px solid #ebebeb; border-radius: 10px; padding: 14px 16px; background: #fff; position: relative; }
@@ -47,7 +47,7 @@
     .color-custom { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #999; }
     svg text { font-family: 'DM Sans', system-ui, sans-serif; }
     @media (max-width: 600px) {
-      .globals { grid-template-columns: 1fr; }
+      .globals { grid-template-columns: 1fr 1fr; }
       .strategy-grid { grid-template-columns: 28px 1fr 1fr; grid-template-rows: auto auto; }
     }
   </style>
@@ -235,6 +235,7 @@ function LineChart({ data, strategies, width, height }) {
 function App() {
   const [initial,     setInitial]     = useState("10000");
   const [monthly,     setMonthly]     = useState("500");
+  const [startDate,   setStartDate]   = useState(todayStr());
   const [strategies,  setStrategies]  = useState(INITIAL_STRATEGIES);
   const [importError, setImportError] = useState("");
   const [chartWidth,  setChartWidth]  = useState(800);
@@ -270,7 +271,7 @@ function App() {
   const removeStrategy = id => setStrategies(prev => prev.filter(s => s.id !== id));
 
   const handleExport = () => {
-    const blob = new Blob([JSON.stringify({ initial, monthly, strategies, exportedAt: new Date().toISOString() }, null, 2)], { type:"application/json" });
+    const blob = new Blob([JSON.stringify({ initial, monthly, startDate, strategies, exportedAt: new Date().toISOString() }, null, 2)], { type:"application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url; a.download = `investment-comparison-${new Date().toISOString().slice(0,10)}.json`; a.click();
@@ -287,6 +288,7 @@ function App() {
         if (!Array.isArray(data.strategies)) throw new Error();
         setInitial(data.initial ?? "0");
         setMonthly(data.monthly ?? "0");
+        setStartDate(data.startDate ?? todayStr());
         setStrategies(data.strategies.map((s,i) => ({ ...s, id:uid++, color: s.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length] })));
       } catch { setImportError("Invalid file. Please import a valid comparison JSON."); }
     };
@@ -295,7 +297,8 @@ function App() {
 
   const { chartData, finalValues } = useMemo(() => {
     const init = parseFloat(initial) || 0, mon = parseFloat(monthly) || 0;
-    const now  = new Date(), startYear = now.getFullYear(), startMonth = now.getMonth();
+    const [sy, sm0] = startDate.split("-").map(Number);
+    const startYear = sy, startMonth = sm0 - 1;
     const parseExpiry = str => { if (!str) return null; const [y,m] = str.split("-").map(Number); return new Date(y, m-1, 1); };
     const expiries = strategies.map(s => parseExpiry(s.expirationDate)).filter(Boolean);
     if (!expiries.length) return { chartData:[], finalValues:{} };
@@ -319,7 +322,7 @@ function App() {
     }
     strategies.forEach(s => { if (fv[s.id]===undefined) { const last=[...rows].reverse().find(r=>r[s.id]!=null); if(last) fv[s.id]=last[s.id]; }});
     return { chartData:rows, finalValues:fv };
-  }, [initial, monthly, strategies]);
+  }, [initial, monthly, startDate, strategies]);
 
   return h('div', { class:'app' },
 
@@ -350,7 +353,11 @@ function App() {
             h('input', { class:'input', type:'number', value:val, onInput:e=>set(e.target.value), min:'0' })
           )
         );
-      })
+      }),
+      h('div', null,
+        h('label', { class:'label' }, 'Start Date'),
+        h('input', { class:'input', type:'month', value:startDate, onInput:e=>setStartDate(e.target.value) })
+      )
     ),
 
     // Strategies
